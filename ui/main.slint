@@ -1,0 +1,203 @@
+/*
+	Miner Launcher
+
+Copyright (C) 2026 Outerbeast
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
+import { VerticalBox, HorizontalBox, LineEdit, Button, ComboBox, StandardButton } from "std-widgets.slint";
+
+export component ErrorDialog inherits Dialog {
+    in property <string> message;
+
+    Text {
+        text: message;
+        wrap: word-wrap;
+    }
+
+    StandardButton {
+        kind: ok;
+    }
+}
+
+
+component LabeledLineEdit {
+    in property <string> label;
+    in-out property <string> value;
+    in property <string> placeholder;
+
+    VerticalBox {
+        spacing: 4px;
+
+        Text {
+            text: label;
+            font-size: 14px;
+        }
+
+        LineEdit {
+            text <=> value;
+            placeholder-text: placeholder;
+        }
+    }
+}
+
+export component MinerLauncher inherits Window {
+    title: "Miner Launcher";
+    width: 600px;
+    height: 960px;
+
+    in-out property <string> popup_message;
+
+    callback show_popup;
+
+    popup := PopupWindow {
+        // your popup UI
+        Text {
+            text: root.popup_message;
+        }
+    }
+
+    show_popup => {
+        popup.show();
+    }
+
+    in-out property <string> name;
+    in-out property <string> miner_exec: "Select Miner";
+    in-out property <string> coin;
+    in-out property <string> wallet;
+    in-out property <string> worker;
+    in-out property <string> pool;
+    in-out property <string> core_clock;
+    in-out property <string> mem_clock;
+    in-out property <string> fan_speed;
+    in-out property <string> power_limit;
+    in-out property <string> extra_args;
+    in-out property <[string]> sheets;
+
+    in-out property <string> algorithm;
+    in-out property <string> hashrate;
+    in-out property <string> efficiency;
+    in-out property <string> gpu_stats;
+
+    callback select_miner_clicked();
+    callback start_clicked();
+    callback save_clicked();
+    callback add_sheet_clicked();
+    callback remove_sheet_clicked();
+
+    // This callback notifies Rust when the selection changes
+    callback coin_changed(string);
+
+    VerticalBox {
+        alignment: LayoutAlignment.center;
+        spacing: 8px;
+
+        txtName := LabeledLineEdit { value <=> root.name; placeholder: "Name"; }
+
+        btnMiner := Button {
+            checkable: false;
+            colorize-icon: false;
+            icon-size: 10px;
+            text: root.miner_exec;
+            clicked => { root.select_miner_clicked(); }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+
+            Text {
+                text: "Coin:";
+                vertical-alignment: center;
+            }
+
+            cbCoin := ComboBox {
+                current-value <=> root.coin;
+                model: [
+                    "ergo",
+                    "erg",
+                    // Ethash family
+                    "etc",
+                    "ethw",
+                    "etho",
+                    // KawPow family
+                    "rvn",
+                    "ravencoin",
+                    "neoxa",
+                    "neurai",
+                    "quai",
+                    "mew",
+                    "meowcoin",
+                    // ZelHash / FluxHash
+                    "flux",
+                    // BeamHashIII
+                    "beam",
+                    // FiroPoW
+                    "firo",
+                    // ProgPoW variants
+                    "sero",
+                    "veil",
+                    "epic",
+                    // Octopus (Conflux)
+                    "cfx",
+                    // kHeavyHash (Kaspa)
+                    "kas",
+                    "kaspa",
+                    // Blake3-based
+                    "iron",
+                    "alph",
+                    // DynexSolve
+                    "dnx",
+                    // KarlsenHash
+                    "ksl",
+                    "karlsen",
+                    // NexaPoW
+                    "nexa",
+                ];   
+            }
+        }
+
+        txtWallet := LabeledLineEdit { value <=> root.wallet;      label: "Wallet Address"; }
+        txtWorker := LabeledLineEdit { value <=> root.worker;      label: "Worker Name"; }
+        txtPool := LabeledLineEdit { value <=> root.pool;        label: "Pool URL"; }
+        txtCore := LabeledLineEdit { value <=> root.core_clock;  label: "Core Clock"; }
+        txtMem := LabeledLineEdit { value <=> root.mem_clock;   label: "Memory Clock"; }
+        txtFan := LabeledLineEdit { value <=> root.fan_speed;   label: "Fan Speed"; }
+        txtPower := LabeledLineEdit { value <=> root.power_limit; label: "Power Limit"; }
+        txtArgs := LabeledLineEdit { value <=> root.extra_args;  label: "Additional Args"; }
+
+        Text {
+            text: "Flight sheet";
+            vertical-alignment: center;
+        }
+
+        cbFlightSheets := ComboBox {
+            model: sheets;
+        }
+
+        Text {
+            text: "Loaded default flight sheet: " + root.sheets[0];
+            color: red;
+            font-size: 14px;
+        }
+
+        HorizontalBox {
+            spacing: 12px;
+            btnStart := Button { checkable: false;
+                primary: true;
+                text: "Start";        clicked => { root.start_clicked(); } }
+            Button { text: "Save Sheet";   clicked => { root.save_clicked(); } }
+            Button { text: "Add Sheet";    clicked => { root.add_sheet_clicked(); } }
+            Button { text: "Remove Sheet"; clicked => { root.remove_sheet_clicked(); } }
+        }
+    }
+}
