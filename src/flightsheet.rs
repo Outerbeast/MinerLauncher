@@ -19,6 +19,7 @@ use crate::MinerLauncher;
 
 use std::
 {
+    env,
     fs,
     io,
     collections::HashMap,
@@ -27,11 +28,11 @@ use std::
 };
 
 use serde::{ Serialize, Deserialize };
+use crate::utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightSheet
-{
-    // Required
+{   // Required
     pub name: String,
     #[serde(rename = "exe")]
     pub miner_exec: String,
@@ -59,9 +60,9 @@ pub struct FlightSheet
 
 impl FlightSheet
 {    // Constructors
-    pub fn from_json(file: &Path) -> Result<Self, std::io::Error>
+    pub fn from_json(file: &Path) -> Result<Self, io::Error>
     {
-        let file = std::fs::read_to_string( file )?;
+        let file = fs::read_to_string( file )?;
         serde_json::from_str( &file ).map_err( |e| e.into() )
     }
    
@@ -133,11 +134,21 @@ impl FlightSheet
         args
     }
 
-    pub fn load_flightsheets(path: &Path) -> Result<Vec<Self>, std::io::Error>
+    pub fn open_flightsheet() -> Result<Self, io::Error>
+    {
+        match utils::select_file_dialogue( env::current_dir().unwrap_or( PathBuf::from( "." ) ).as_path(),
+            "JSON Files", &["json"] )
+        {
+            Some( path ) => FlightSheet::from_json( &path ),
+            None => Err( io::Error::new( io::ErrorKind::NotFound, "No file selected." ) ),
+        }
+    }
+
+    pub fn load_flightsheets(path: &Path) -> Result<Vec<Self>, io::Error>
     {
         let mut sheets = Vec::new();
 
-        for entry in fs::read_dir(path)?
+        for entry in fs::read_dir( path )?
         {
             let entry = entry?;
             let path: PathBuf = entry.path();
@@ -152,16 +163,16 @@ impl FlightSheet
         Ok( sheets )
     }
 
-    pub fn save_json(&self, path: &Path) -> Result<(), std::io::Error>
+    pub fn save_json(&self, path: &Path) -> Result<(), io::Error>
     {
         let json = serde_json::to_string_pretty( self )?;
-        std::fs::write( path, json )?;
+        fs::write( path, json )?;
 
         Ok(())
     }
-
+    // Setting GPU tunes requires elevated perms
     fn needs_admin(&self) -> bool
-    {
+    {   
         self.core_clock.is_some()
         || self.mem_clock.is_some()
         || self.fan_speed.is_some()
@@ -172,13 +183,13 @@ impl FlightSheet
     {
         if self.miner_exec.is_empty() || !self.miner_exec.ends_with( ".exe" )
         {
-            return Err( std::io::Error::new( std::io::ErrorKind::InvalidInput, "Miner tool executable not set." ) );
+            return Err( io::Error::new( io::ErrorKind::InvalidInput, "Miner tool executable not set." ) );
         }
 
         match self.needs_admin()
         {
             true => self.launch_admin(),
-            false => self.launch_normal(),
+            false => self.launch_normal()
         }
     }
 
@@ -195,7 +206,7 @@ impl FlightSheet
         Command::new( program ).args( args ).spawn()
     }
 
-    fn launch_admin(&self) -> Result<Child, std::io::Error>
+    fn launch_admin(&self) -> Result<Child, io::Error>
     {
         let mut args = self.to_args();
         println!( "Launching admin miner with arguments {}", args.join( " " ) );
@@ -212,7 +223,7 @@ impl FlightSheet
     }
 
     #[allow( dead_code )]
-    pub fn stop_miner(&self) -> Result<Child, std::io::Error>
+    pub fn stop_miner(&self) -> Result<Child, io::Error>
     {
         let processname = self.miner_exec.clone();
         println!( "Stopping miner:{}", processname );
@@ -232,12 +243,12 @@ pub struct ArgSpec
 
 pub type MinerSchema = HashMap<String, HashMap<String, ArgSpec>>;
 
-pub fn load_schema(path: &str) -> MinerSchema
+pub fn load_schema(path: &Path) -> MinerSchema
 {
-    let content = std::fs::read_to_string(path)
+    let content = std::fs::read_to_string( path )
         .expect( "miners.toml missing" );
 
-    toml::from_str(&content)
+    toml::from_str( &content )
         .expect( "invalid miners.toml" )
 }
 

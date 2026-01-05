@@ -1,0 +1,8 @@
+{
+  "name": "example flightsheet",
+  "exe": "C:\\miner.exe",
+  "coin": "coin",
+  "wallet": "0xADDRESS",
+  "worker": "Worker Name",
+  "pool": "stratum+tcp://poolurl.com:portnumber"
+}

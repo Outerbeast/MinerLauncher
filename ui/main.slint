@@ -89,6 +89,8 @@ export component MinerLauncher inherits Window {
     in-out property <string> efficiency;
     in-out property <string> gpu_stats;
 
+    in_out property <string> btn_start_txt: "Start Miner";
+
     callback select_miner_clicked();
     callback start_clicked();
     callback save_clicked();
@@ -194,10 +196,10 @@ export component MinerLauncher inherits Window {
             spacing: 12px;
             btnStart := Button { checkable: false;
                 primary: true;
-                text: "Start";        clicked => { root.start_clicked(); } }
+                text: root.btn_start_txt;        clicked => { root.start_clicked(); } }
             Button { text: "Save Sheet";   clicked => { root.save_clicked(); } }
             Button { text: "Add Sheet";    clicked => { root.add_sheet_clicked(); } }
-            Button { text: "Remove Sheet"; clicked => { root.remove_sheet_clicked(); } }
+            Button { text: "Clear"; clicked => { root.remove_sheet_clicked(); } }
         }
     }
 }
