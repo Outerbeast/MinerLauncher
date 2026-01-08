@@ -45,7 +45,6 @@ pub fn exec_program(mut args: Vec<String>) -> Result<Child, io::Error>
     let program = args.remove( 0 );
 
     Command::new( program ).args( args ).spawn()
-
 }
 
 pub fn stop_process(mut proc: Child) -> Result<ExitStatus, io::Error>

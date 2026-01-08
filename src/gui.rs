@@ -28,7 +28,9 @@ use std::
 use slint::
 {
     SharedString,
-    ComponentHandle
+    ComponentHandle,
+    ModelRc,
+    VecModel
 };
 
 use crate::
@@ -69,9 +71,13 @@ pub fn launch_gui() -> Result<(), io::Error>
         .iter()
         .map( |fs| fs.name.clone().into() )
     .collect();
-
-    let model = Rc::new( slint::VecModel::from( names ) );
-    gui.set_sheets( model.into() );
+    gui.set_sheets( Rc::new( VecModel::from( names ) ).into() );
+    // Populate Coin Combobox
+    let coins_only: Vec<SharedString> = flightsheet::COINS
+        .iter()
+        .map( |c| SharedString::from( c.0 ) )
+    .collect();
+    gui.set_coin_list( ModelRc::new( VecModel::from( coins_only ) ) );
     // Instance of a (running) miner, if it exists
     let miner = Rc::new( RefCell::new( None::<Child> ) );
     // ------------- Callbacks for events ------------------//
@@ -79,9 +85,9 @@ pub fn launch_gui() -> Result<(), io::Error>
         let weak = weak_gui.clone();
         gui.on_select_miner_clicked( move ||
         {
-            if let Some( ui ) = weak.upgrade()
+            if let Some( gui ) = weak.upgrade()
             {
-                evt_select_miner_clicked( &ui );
+                evt_select_miner_clicked( &gui );
             }
         });
     }
@@ -92,9 +98,9 @@ pub fn launch_gui() -> Result<(), io::Error>
 
         gui.on_start_clicked( move ||
         {
-            if let Some( ui ) = weak.upgrade()
+            if let Some( gui ) = weak.upgrade()
             {
-                evt_start_clicked( &ui, &miner );
+                evt_start_clicked( &gui, &miner );
             }
         });
     }
@@ -103,9 +109,9 @@ pub fn launch_gui() -> Result<(), io::Error>
         let weak = weak_gui.clone();
         gui.on_save_clicked( move ||
         {
-            if let Some( ui ) = weak.upgrade() 
+            if let Some( gui ) = weak.upgrade() 
             {
-                evt_save_clicked( &ui );
+                evt_save_clicked( &gui );
             }
         });
     }
@@ -114,13 +120,13 @@ pub fn launch_gui() -> Result<(), io::Error>
         let weak = weak_gui.clone();
         gui.on_add_sheet_clicked( move ||
         {
-            if let Some( ui ) = weak.upgrade()
+            if let Some( gui ) = weak.upgrade()
             {
                 let selected_fs = selected_flightsheet.clone();
 
                 if let Ok( new_flightsheet ) = FlightSheet::open_flightsheet()
                 {
-                    update_ui_from_flightsheet( &ui, &new_flightsheet );
+                    update_ui_from_flightsheet( &gui, &new_flightsheet );
                     *selected_fs.borrow_mut() = new_flightsheet;
                     // !-TODO-!: update flight sheet combobox
                 }
@@ -132,20 +138,31 @@ pub fn launch_gui() -> Result<(), io::Error>
         let weak = weak_gui.clone();
         gui.on_remove_sheet_clicked( move ||
         {
-            if let Some( ui ) = weak.upgrade()
+            if let Some( gui ) = weak.upgrade()
             {
-                evt_clear_clicked( &ui );
+                evt_clear_clicked( &gui );
             }
         });
     } 
 
-    {//ComboBox selection event for Coin - This might not be working properly.
+    {//ComboBox selection event for Coin
         let weak = gui.as_weak();
         gui.on_coin_changed( move |new_coin|
         {
-            if let Some( ui ) = weak.upgrade()
+            if let Some( gui ) = weak.upgrade()
             {
-                evt_coin_selected( &ui, new_coin );
+                evt_coin_selected( &gui, new_coin );
+            }
+        });
+    }
+
+    {// ComboBox selection event for Flightsheets
+        let weak = gui.as_weak();
+        gui.on_coin_changed( move |new_sheet|
+        {
+            if let Some( gui ) = weak.upgrade()
+            {
+                evt_flightsheet_selected( &gui, new_sheet );
             }
         });
     }
@@ -155,37 +172,30 @@ pub fn launch_gui() -> Result<(), io::Error>
     Ok(())
 }
 // =============================== UI Events =============================== \\
-fn evt_select_miner_clicked(ui: &MinerLauncher)
+fn evt_select_miner_clicked(gui: &MinerLauncher)
 {
-    match utils::select_file_dialogue( env::current_dir()
+    if let Some( miner ) = utils::select_file_dialogue( env::current_dir()
         .unwrap_or( PathBuf::from( "." ) )
         .as_path(),
         "Executable Files", &["exe"] )
+    && miner.to_str().is_some()
     {
-        Some( miner ) => 
-        {
-            if miner.to_str().is_some()
-            {
-                ui.set_miner_exec( miner.to_string_lossy().to_string().into() )
-            }
-        }
-        // Don't change anything
-        None => { }
+        gui.set_miner_exec( miner.to_string_lossy().to_string().into() )
     }
 }
 
-fn evt_start_clicked(ui: &MinerLauncher, miner: &Rc<RefCell<Option<Child>>>)
+fn evt_start_clicked(gui: &MinerLauncher, miner: &Rc<RefCell<Option<Child>>>)
 {
-    match ui.get_btn_start_txt().as_str()
+    match gui.get_btn_start_txt().as_str()
     {
         "Start Miner" =>
         {
-            match FlightSheet::from_gui( ui ).launch_miner()
+            match FlightSheet::from_gui( gui ).launch_miner()
             {
                 Ok( child ) =>
                 {
                     *miner.borrow_mut() = Some( child );
-                    ui.set_btn_start_txt( "Stop Miner".into() );
+                    gui.set_btn_start_txt( "Stop Miner".into() );
                 }
 
                 Err( _e ) => { }
@@ -206,7 +216,7 @@ fn evt_start_clicked(ui: &MinerLauncher, miner: &Rc<RefCell<Option<Child>>>)
                 {
                     Ok( _ ) =>
                     {
-                        ui.set_btn_start_txt( "Start Miner".into() );
+                        gui.set_btn_start_txt( "Start Miner".into() );
                     }
 
                     Err( e ) =>
@@ -220,75 +230,81 @@ fn evt_start_clicked(ui: &MinerLauncher, miner: &Rc<RefCell<Option<Child>>>)
         }
 
         _ => { }
-
     }
 }
 
-fn evt_save_clicked(ui: &MinerLauncher)
+fn evt_save_clicked(gui: &MinerLauncher)
 {
-    let _ = FlightSheet::from_gui( &ui )
-    .save_json( env::current_dir()
+    let _ = FlightSheet::from_gui( gui )
+        .save_json( env::current_dir()
     .unwrap_or( PathBuf::from( "." ) ).as_path() );
 }
 
-fn evt_clear_clicked(ui: &MinerLauncher)
+fn evt_clear_clicked(gui: &MinerLauncher)
 {
     let empty = SharedString::new();
-    ui.set_name( empty.clone() );
-    ui.set_miner_exec( empty.clone() );
-    ui.set_coin( empty.clone() );
-    ui.set_wallet( empty.clone() );
-    ui.set_pool( empty.clone() );
-    ui.set_worker( empty.clone() );
-    ui.set_core_clock( empty.clone() );
-    ui.set_mem_clock( empty.clone() );
-    ui.set_fan_speed( empty.clone() );
-    ui.set_power_limit( empty.clone() );
-    ui.set_extra_args( empty );
+    gui.set_name( empty.clone() );
+    gui.set_miner_exec( empty.clone() );
+    gui.set_coin( empty.clone() );
+    gui.set_wallet( empty.clone() );
+    gui.set_pool( empty.clone() );
+    gui.set_worker( empty.clone() );
+    gui.set_core_clock( empty.clone() );
+    gui.set_mem_clock( empty.clone() );
+    gui.set_fan_speed( empty.clone() );
+    gui.set_power_limit( empty.clone() );
+    gui.set_extra_args( empty );
 }
 
-fn evt_coin_selected(ui: &MinerLauncher, new_coin: SharedString)
+fn evt_coin_selected(gui: &MinerLauncher, new_coin: SharedString)
 {
-    let algo = flightsheet::algo_for( new_coin.to_string() );
-    ui.set_algorithm( algo.unwrap_or_default().into() );
-    println!( "Algorithm is now set to: {:?}", algo.clone() );
+    gui.set_algorithm( flightsheet::algo_for( new_coin.to_string() ).unwrap_or_default().into() );
+    gui.set_coin( new_coin );
 }
 
-pub fn update_ui_from_flightsheet(ui: &MinerLauncher, fs: &FlightSheet)
+fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)
 {
-    ui.set_name( fs.name.clone().into() );
-    ui.set_miner_exec( fs.miner_exec.clone().into() );
-    ui.set_coin( fs.coin.clone().into() );
-    ui.set_wallet( fs.wallet.clone().into() );
-    ui.set_pool( fs.pool.clone().into() );
+    if let Ok( file ) = &FlightSheet::from_json( &PathBuf::from( new_flightsheet.as_str() ) )
+    {
+        update_ui_from_flightsheet( gui, file );
+    }
+}
+
+pub fn update_ui_from_flightsheet(gui: &MinerLauncher, fs: &FlightSheet)
+{
+    gui.set_name( fs.name.clone().into() );
+    gui.set_miner_exec( fs.miner_exec.clone().into() );
+    gui.set_coin( fs.coin.clone().into() );
+    gui.set_wallet( fs.wallet.clone().into() );
+    gui.set_pool( fs.pool.clone().into() );
 
     if let Some( v ) = &fs.worker
     {
-        ui.set_worker( v.clone().into() );
+        gui.set_worker( v.clone().into() );
     }
 
     if let Some( v ) = &fs.core_clock
     {
-        ui.set_core_clock( v.clone().into() );
+        gui.set_core_clock( v.clone().into() );
     }
 
     if let Some( v ) = &fs.mem_clock
     {
-        ui.set_mem_clock( v.clone().into() );
+        gui.set_mem_clock( v.clone().into() );
     }
 
     if let Some( v ) = &fs.fan_speed
     {
-        ui.set_fan_speed( v.clone().into() );
+        gui.set_fan_speed( v.clone().into() );
     }
 
     if let Some( v ) = &fs.power_limit
     {
-        ui.set_power_limit( v.clone().into() );
+        gui.set_power_limit( v.clone().into() );
     }
 
     if let Some( v ) = &fs.extra_args
     {
-        ui.set_extra_args( v.clone().into() );
+        gui.set_extra_args( v.clone().into() );
     }
 }

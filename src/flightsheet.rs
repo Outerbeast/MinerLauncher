@@ -22,7 +22,7 @@ use std::
     env,
     fs,
     io,
-    collections::HashMap,
+    //collections::HashMap,
     path::{ Path, PathBuf },
     process::{ Child, Command }
 };
@@ -84,51 +84,25 @@ impl FlightSheet
         }
     }
     // Methods
-    pub fn to_args(&self) -> Vec<String>
-    {   // Format: "C:\path\to\miner.exe --coin <coin> --algorithm <algo> --username <wallet> --url <pool>"
-        let mut args = vec!
-        [// !-TODO-!: Support for other miner argument schemes- currently Rigel only
-            self.miner_exec.clone(),
-            "--coin".into(), self.coin.clone(),
-            "--algorithm".into(), algo_for( self.coin.clone() ).expect( "Algorithm for coin is missing!" ).to_string(),
-            "--username".into(), self.wallet.clone(),
-            "--url".into(), self.pool.clone(),
-        ];
+    pub fn to_args(&self, schema: &[ArgSpec]) -> Vec<String>
+    {
+        let mut args = vec![self.miner_exec.clone()];
 
-        if let Some( worker ) = &self.worker
+        for spec in schema
         {
-            args.push( "--worker".into() );
-            args.push( worker.clone() );
-        }
-
-        if let Some( core ) = &self.core_clock
-        {
-            args.push( "--cclock".into() );
-            args.push( core.clone() );
-        }
-
-        if let Some( mem ) = &self.mem_clock
-        {
-            args.push( "--mclock".into() );
-            args.push( mem.clone() );
-        }
-
-        if let Some( fan ) = &self.fan_speed
-        {
-            args.push( "--fan-control".into() );
-            args.push( fan.clone() );
-        }
-
-        if let Some( pl ) = &self.power_limit
-        {
-            args.push( "--pl".into() );
-            args.push( pl.clone() );
+            if let Some(value) = ( spec.getter )( self )
+            {
+                args.push( spec.flag.into() );
+                args.push( value );
+            }
         }
 
         if let Some( extra ) = &self.extra_args
-        && !extra.trim().is_empty()
         {
-            args.extend( extra.split_whitespace().map( |s| s.to_string() ) );
+            if !extra.trim().is_empty()
+            {
+                args.extend( extra.split_whitespace().map( |s| s.to_string() ) );
+            }
         }
 
         args
@@ -195,7 +169,7 @@ impl FlightSheet
 
     fn launch_normal(&self) -> Result<Child, io::Error>
     {
-        let mut args = self.to_args();
+        let mut args = self.to_args( RIGEL_ARGS );
         println!( "Launching miner with arguments {}", args.join( " " ) );
         if args.is_empty()
         {
@@ -208,9 +182,9 @@ impl FlightSheet
 
     fn launch_admin(&self) -> Result<Child, io::Error>
     {
-        let mut args = self.to_args();
+        let mut args = self.to_args( RIGEL_ARGS );
         println!( "Launching admin miner with arguments {}", args.join( " " ) );
-        let program = args.remove(0);
+        let program = args.remove( 0 );
 
         Command::new( "powershell" )
             .arg( "-Command" )
@@ -234,72 +208,6 @@ impl FlightSheet
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ArgSpec
-{
-    pub flag: String,
-    pub format: String,
-}
-
-pub type MinerSchema = HashMap<String, HashMap<String, ArgSpec>>;
-
-pub fn load_schema(path: &Path) -> MinerSchema
-{
-    let content = std::fs::read_to_string( path )
-        .expect( "miners.toml missing" );
-
-    toml::from_str( &content )
-        .expect( "invalid miners.toml" )
-}
-
-pub fn algo_for(coin: String) -> Option<&'static str>
-{
-    match coin.to_lowercase().as_str()
-    {   // Autolykos2
-        "ergo"        => Some( "autolykos2" ),
-        "erg"         => Some( "autolykos2" ),
-        // Ethash family
-        "etc"         => Some( "ethash" ),
-        "ethw"        => Some( "ethash" ),
-        "etho"        => Some( "ethash" ),
-        // KawPow family
-        "rvn"         => Some( "kawpow" ),
-        "ravencoin"   => Some( "kawpow" ),
-        "neoxa"       => Some( "kawpow" ),
-        "neurai"      => Some( "kawpow" ),
-        "quai"        => Some( "kawpow" ),
-        "mew"         => Some( "kawpow" ),
-        "meowcoin"    => Some( "kawpow" ),
-        // ZelHash / FluxHash
-        "flux"        => Some( "zelhash" ),
-        // BeamHashIII
-        "beam"        => Some( "beamhash" ),
-        // FiroPoW
-        "firo"        => Some( "firopow" ),
-        // ProgPoW variants
-        "sero"        => Some( "progpow" ),
-        "veil"        => Some( "progpow" ),
-        "epic"        => Some( "progpow-epic" ),
-        // Octopus (Conflux)
-        "cfx"         => Some( "octopus" ),
-        // kHeavyHash (Kaspa)
-        "kas"         => Some( "kheavyhash" ),
-        "kaspa"       => Some( "kheavyhash" ),
-        // Blake3-based
-        "iron"        => Some( "blake3" ),
-        "alph"        => Some( "blake3-alph" ),
-        // DynexSolve
-        "dnx"         => Some( "dynexsolve" ),
-        // KarlsenHash
-        "ksl"         => Some( "karlsenhash" ),
-        "karlsen"     => Some( "karlsenhash" ),
-        // NexaPoW
-        "nexa"        => Some( "nexapow" ),
-
-        _ => None,
-    }
-}
-
 #[inline]
 fn opt(s: slint::SharedString) -> Option<String>
 {
@@ -310,3 +218,133 @@ fn opt(s: slint::SharedString) -> Option<String>
         false => Some( s.to_string() ),
     }
 }
+
+pub const COINS: &[(&str, &str)] = 
+&[
+    // ethash family
+    ("etc", "etchash"),
+    ("exp", "ethash"),
+    ("clo", "ethash"),
+    ("ubq", "ubqhash"),
+    // autolykos
+    ("erg", "autolykos2"),
+    // kawpow
+    ("rvn", "kawpow"),
+    ("neox", "kawpow"),
+    ("rne", "kawpow"),
+    ("quai", "kawpow" ),
+    ("mewc", "kawpow"),
+    ("xna", "kawpow"),
+    // kheavyhash (kaspa)
+    ("kas", "kheavyhash"),
+    // nexa
+    ("nexa", "nexapow"),
+    // beam
+    ("beam", "beamhashiii"),
+    // equihash family
+    ("zec", "equihash 200,9"),
+    ("zen", "equihash 144,5"),
+    ("btg", "equihash 144,5"),
+    ("zcl", "equihash 192,7"),
+    // cuckoo / cuckatoo / cuckaroo
+    ("grin", "cuckatoo32"),
+    ("mwc", "cuckaroo29"),
+    ("aion", "cuckoo29"),
+    // octopus
+    ("cfx", "octopus"),
+    // verthash
+    ("vtc", "verthash"),
+    // progpow variants
+    ("sero", "progpow"),
+    ("epic", "progpow"),
+    ("firo", "firopow"),
+    // randomx (cpu)
+    ("xmr", "randomx"),
+    ("wownero", "randomx"),
+    ("dero", "randomx"),
+    // yespower family
+    ("rtm", "yespowerrtm"),
+    ("ytn", "yespower"),
+    ("xmy", "yespower"),
+    // argon2 family
+    ("arq", "argon2id"),
+    ("xla", "argon2id"),
+    ("ufo", "argon2d"),
+    // ghostrider
+    ("rtm", "ghostrider"),
+    // ironfish
+    ("iron", "fishhash"),
+    // alephium
+    ("alph", "blake3pow"),
+    // handshake
+    ("hns", "blake2b+sha3"),
+    // zilliqa (dual mining)
+    ("zil", "ethash"),
+    // dynex
+    ("dnx", "dynexsolve"),
+    // radiant
+    ("rxd", "sha512_256d"),
+    // pyrin
+    ("pyi", "pyrinhash")
+];
+
+pub fn algo_for(coin: String) -> Option<&'static str>
+{
+    Some( COINS.iter().find( |c| c.0 == coin )?.0 )
+}
+
+pub struct ArgSpec
+{
+    pub flag: &'static str,
+    pub getter: fn(&FlightSheet) -> Option<String>,
+}
+
+pub const RIGEL_ARGS: &[ArgSpec] =
+    &[
+    ArgSpec
+    {
+        flag: "--coin",
+        getter: |fs| Some(fs.coin.clone()),
+    },
+    ArgSpec
+    {
+        flag: "--algorithm",
+        getter: |fs| algo_for(fs.coin.clone()).map(|a| a.to_string()),
+    },
+    ArgSpec
+    {
+        flag: "--username",
+        getter: |fs| Some(fs.wallet.clone()),
+    },
+    ArgSpec
+    {
+        flag: "--url",
+        getter: |fs| Some(fs.pool.clone()),
+    },
+    // Optional
+    ArgSpec
+    {
+        flag: "--worker",
+        getter: |fs| fs.worker.clone(),
+    },
+    ArgSpec
+    {
+        flag: "--cclock",
+        getter: |fs| fs.core_clock.clone(),
+    },
+    ArgSpec
+    {
+        flag: "--mclock",
+        getter: |fs| fs.mem_clock.clone(),
+    },
+    ArgSpec
+    {
+        flag: "--fan-control",
+        getter: |fs| fs.fan_speed.clone(),
+    },
+    ArgSpec
+    {
+        flag: "--pl",
+        getter: |fs| fs.power_limit.clone(),
+    },
+];
