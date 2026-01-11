@@ -20,6 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 pub mod gui;
 pub mod flightsheet;
 pub mod utils;
+pub mod exec;
 
 use std::
 {
@@ -29,6 +30,8 @@ use std::
 };
 
 use crate::{ flightsheet::FlightSheet };
+use crate::exec::MinerState;
+use crate::flightsheet::RIGEL_ARGS;
 
 slint::include_modules!();
 
@@ -43,7 +46,12 @@ fn run() -> Result<(), io::Error>
             if args[1].ends_with( ".json" )
             {
                 let fs = FlightSheet::from_json( &PathBuf::from( &args[1] ) )?;
-                let _ = FlightSheet::launch_miner( &fs );
+                //let _ = FlightSheet::launch_miner( &fs );
+                //let miner = ;
+                let args = fs.to_args( RIGEL_ARGS );
+                let args: Vec<&str> = args.iter().map( |s| s.as_str() ).collect();
+                MinerState::launch( &mut MinerState::new(), fs.miner_exec.as_str(), &args, fs.needs_admin() )?;
+
             }
         }
 

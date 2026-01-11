@@ -5,12 +5,10 @@ edition = "2024"
 
 [build-dependencies]
 slint-build = "1.14.1"
-winresource = "0.1.28"
+winresource = "0.1.29"
 
 [dependencies]
-embed-resource = "3.0.6"
 rfd = "0.17.1"
 serde = "1.0.228"
 serde_json = "1.0.149"
 slint = { version = "1.14.1", features = ["std"] }
-toml = "0.9.10"

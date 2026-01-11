@@ -22,9 +22,7 @@ use std::
     env,
     fs,
     io,
-    //collections::HashMap,
-    path::{ Path, PathBuf },
-    process::{ Child, Command }
+    path::{ Path, PathBuf }
 };
 
 use serde::{ Serialize, Deserialize };
@@ -33,7 +31,8 @@ use crate::utils;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightSheet
 {   // Required
-    pub name: String,
+    pub name: String,// This is redundant: name should be the actual filepath of the flightsheet and then name is extracted from it.
+    pub file: PathBuf,
     #[serde(rename = "exe")]
     pub miner_exec: String,
 
@@ -71,6 +70,7 @@ impl FlightSheet
         Self
         {
             name: gui.get_name().to_string(),
+            file: PathBuf::new(),
             miner_exec: gui.get_miner_exec().to_string(),
             coin: gui.get_coin().to_string(),
             wallet: gui.get_wallet().to_string(),
@@ -98,11 +98,9 @@ impl FlightSheet
         }
 
         if let Some( extra ) = &self.extra_args
+        && !extra.trim().is_empty()
         {
-            if !extra.trim().is_empty()
-            {
-                args.extend( extra.split_whitespace().map( |s| s.to_string() ) );
-            }
+            args.extend( extra.split_whitespace().map( |s| s.to_string() ) );
         }
 
         args
@@ -145,66 +143,12 @@ impl FlightSheet
         Ok(())
     }
     // Setting GPU tunes requires elevated perms
-    fn needs_admin(&self) -> bool
+    pub fn needs_admin(&self) -> bool
     {   
         self.core_clock.is_some()
         || self.mem_clock.is_some()
         || self.fan_speed.is_some()
         || self.power_limit.is_some()
-    }
-
-    pub fn launch_miner(&self) -> Result<Child, io::Error>
-    {
-        if self.miner_exec.is_empty() || !self.miner_exec.ends_with( ".exe" )
-        {
-            return Err( io::Error::new( io::ErrorKind::InvalidInput, "Miner tool executable not set." ) );
-        }
-
-        match self.needs_admin()
-        {
-            true => self.launch_admin(),
-            false => self.launch_normal()
-        }
-    }
-
-    fn launch_normal(&self) -> Result<Child, io::Error>
-    {
-        let mut args = self.to_args( RIGEL_ARGS );
-        println!( "Launching miner with arguments {}", args.join( " " ) );
-        if args.is_empty()
-        {
-            return Err( io::Error::new( io::ErrorKind::InvalidInput, "No program specified." ) );
-        }
-
-        let program = args.remove( 0 );
-        Command::new( program ).args( args ).spawn()
-    }
-
-    fn launch_admin(&self) -> Result<Child, io::Error>
-    {
-        let mut args = self.to_args( RIGEL_ARGS );
-        println!( "Launching admin miner with arguments {}", args.join( " " ) );
-        let program = args.remove( 0 );
-
-        Command::new( "powershell" )
-            .arg( "-Command" )
-            .arg( format!(
-                "Start-Process '{}' -ArgumentList '{}' -Verb runAs",
-                program,
-                args.join( " " )
-            ))
-        .spawn()
-    }
-
-    #[allow( dead_code )]
-    pub fn stop_miner(&self) -> Result<Child, io::Error>
-    {
-        let processname = self.miner_exec.clone();
-        println!( "Stopping miner:{}", processname );
-        Command::new( "powershell" )
-            .arg( "-Command" )
-            .arg( format!( "Get-Process | Where-Object ProcessName -like {} | Stop-Process", processname ) )
-        .spawn()
     }
 }
 
@@ -290,7 +234,7 @@ pub const COINS: &[(&str, &str)] =
 
 pub fn algo_for(coin: String) -> Option<&'static str>
 {
-    Some( COINS.iter().find( |c| c.0 == coin )?.0 )
+    Some( COINS.iter().find( |c| c.0 == coin )?.1 )
 }
 
 pub struct ArgSpec
@@ -309,7 +253,7 @@ pub const RIGEL_ARGS: &[ArgSpec] =
     ArgSpec
     {
         flag: "--algorithm",
-        getter: |fs| algo_for(fs.coin.clone()).map(|a| a.to_string()),
+        getter: |fs| algo_for( fs.coin.clone() ).map( |a| a.to_string() ),
     },
     ArgSpec
     {

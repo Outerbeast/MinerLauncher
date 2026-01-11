@@ -92,7 +92,7 @@ export component MinerLauncher inherits Window {
     in-out property <string> efficiency;
     in-out property <string> gpu_stats;
 
-    in_out property <string> btn_start_txt: "Start Miner";
+    in-out property <string> btn_start_txt: "Start Miner";
 
     callback select_miner_clicked();
     callback start_clicked();
@@ -127,52 +127,9 @@ export component MinerLauncher inherits Window {
 
             cbCoin := ComboBox {
                 current-value <=> root.coin;
-                
-/*                 model: [
-                    "ergo",
-                    "erg",
-                    // Ethash family
-                    "etc",
-                    "ethw",
-                    "etho",
-                    // KawPow family
-                    "rvn",
-                    "ravencoin",
-                    "neoxa",
-                    "neurai",
-                    "quai",
-                    "mew",
-                    "meowcoin",
-                    // ZelHash / FluxHash
-                    "flux",
-                    // BeamHashIII
-                    "beam",
-                    // FiroPoW
-                    "firo",
-                    // ProgPoW variants
-                    "sero",
-                    "veil",
-                    "epic",
-                    // Octopus (Conflux)
-                    "cfx",
-                    // kHeavyHash (Kaspa)
-                    "kas",
-                    "kaspa",
-                    // Blake3-based
-                    "iron",
-                    "alph",
-                    // DynexSolve
-                    "dnx",
-                    // KarlsenHash
-                    "ksl",
-                    "karlsen",
-                    // NexaPoW
-                    "nexa",
-                ]; */
-
                 model: coin_list;
 
-                selected(current-value) => { coin_changed(current-value) };
+                selected(current-value) => { coin_changed(current-value) }
             }
         }
 
@@ -194,7 +151,7 @@ export component MinerLauncher inherits Window {
             model: sheets;
             selected(current-value) => { 
                 flightsheet_changed(current-value)
-            };
+            }
         }
 
         Text {

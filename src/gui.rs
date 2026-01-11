@@ -21,8 +21,7 @@ use std::
     io,
     path::PathBuf,
     rc::Rc,
-    cell::RefCell,
-    process::Child
+    cell::RefCell
 };
 
 use slint::
@@ -36,10 +35,14 @@ use slint::
 use crate::
 {
     MinerLauncher,
+    exec::*,
     flightsheet,
     flightsheet::FlightSheet,
-    utils
+    utils,
+    alloc_shared
 };
+use crate::flightsheet::RIGEL_ARGS;
+
 // Build UI
 pub fn launch_gui() -> Result<(), io::Error>
 {
@@ -55,7 +58,7 @@ pub fn launch_gui() -> Result<(), io::Error>
         .as_path()
     ).unwrap_or_default();
 
-    let selected_flightsheet = Rc::new( RefCell::new(
+    let selected_flightsheet = alloc_shared!(
     if !flightsheets.is_empty()
     {
         flightsheets[0].clone()
@@ -63,23 +66,22 @@ pub fn launch_gui() -> Result<(), io::Error>
     else
     {
         FlightSheet::from_gui( &gui )
-    }));
+    });
 
     update_ui_from_flightsheet( &gui, &selected_flightsheet.borrow() );
-    // Populate Flight Sheet combobox
-    let names: Vec<slint::SharedString> = flightsheets
-        .iter()
-        .map( |fs| fs.name.clone().into() )
-    .collect();
-    gui.set_sheets( Rc::new( VecModel::from( names ) ).into() );
     // Populate Coin Combobox
     let coins_only: Vec<SharedString> = flightsheet::COINS
         .iter()
         .map( |c| SharedString::from( c.0 ) )
     .collect();
     gui.set_coin_list( ModelRc::new( VecModel::from( coins_only ) ) );
-    // Instance of a (running) miner, if it exists
-    let miner = Rc::new( RefCell::new( None::<Child> ) );
+    // Populate Flight Sheet combobox
+    let names: Vec<slint::SharedString> = flightsheets
+        .iter()
+        .map( |fs| fs.name.clone().into() )
+    .collect();
+    gui.set_sheets( Rc::new( VecModel::from( names ) ).into() );
+
     // ------------- Callbacks for events ------------------//
     {// Select Miner button
         let weak = weak_gui.clone();
@@ -92,15 +94,14 @@ pub fn launch_gui() -> Result<(), io::Error>
         });
     }
 
-    {// Start button
+    let state = alloc_shared!(MinerState::new());
+    {
         let weak = weak_gui.clone();
-        let miner = miner.clone();
+        let state = state.clone();
 
-        gui.on_start_clicked( move ||
-        {
-            if let Some( gui ) = weak.upgrade()
-            {
-                evt_start_clicked( &gui, &miner );
+        gui.on_start_clicked(move || {
+            if let Some(gui) = weak.upgrade() {
+                evt_start_clicked(&gui, &state);
             }
         });
     }
@@ -158,7 +159,7 @@ pub fn launch_gui() -> Result<(), io::Error>
 
     {// ComboBox selection event for Flightsheets
         let weak = gui.as_weak();
-        gui.on_coin_changed( move |new_sheet|
+        gui.on_flightsheet_changed( move |new_sheet|
         {
             if let Some( gui ) = weak.upgrade()
             {
@@ -184,50 +185,33 @@ fn evt_select_miner_clicked(gui: &MinerLauncher)
     }
 }
 
-fn evt_start_clicked(gui: &MinerLauncher, miner: &Rc<RefCell<Option<Child>>>)
+fn evt_start_clicked(gui: &MinerLauncher, state: &Rc<RefCell<MinerState>>)
 {
     match gui.get_btn_start_txt().as_str()
     {
         "Start Miner" =>
         {
-            match FlightSheet::from_gui( gui ).launch_miner()
-            {
-                Ok( child ) =>
-                {
-                    *miner.borrow_mut() = Some( child );
-                    gui.set_btn_start_txt( "Stop Miner".into() );
-                }
+            let flightsheet = FlightSheet::from_gui(gui);
+            let mut miner = state.borrow_mut();
+            let args = flightsheet.to_args( RIGEL_ARGS );
+            let args: Vec<&str> = args.iter().map( |s| s.as_str() ).collect();
 
-                Err( _e ) => { }
+            match miner.launch( &flightsheet.miner_exec, &args, flightsheet.needs_admin() )
+            {
+                Ok( _ ) => gui.set_btn_start_txt( "Stop Miner".into() ),
+                Err( e ) => miner.status = MinerStatus::Error( e.to_string() )
             }
         }
-
-        "Stop Miner" =>
-        {   // Take the child out in a single borrow
-            let child =
+        // TODO: need to fix stoppage behaviour
+        /*"Stop Miner" =>
+        {
+            let mut s = state.borrow_mut();
+            match s.stop()
             {
-                let mut borrow = miner.borrow_mut();
-                borrow.take() // Option::take() replaces with None and returns the Child
-            };
-            // Now the borrow is dropped automatically (end of block)
-            if let Some( mut child ) = child
-            {
-                match child.kill()
-                {
-                    Ok( _ ) =>
-                    {
-                        gui.set_btn_start_txt( "Start Miner".into() );
-                    }
-
-                    Err( e ) =>
-                    {
-                        eprintln!( "Failed to stop process: {}", e );
-                        // If kill failed, you may want to put the child back:
-                        // *miner.borrow_mut() = Some(child);
-                    }
-                }
+                Ok( _ ) => gui.set_btn_start_txt( "Start Miner".into() ),
+                Err( e ) => eprintln!( "Failed to stop miner: {}", e )
             }
-        }
+        }*/
 
         _ => { }
     }
@@ -262,11 +246,28 @@ fn evt_coin_selected(gui: &MinerLauncher, new_coin: SharedString)
     gui.set_coin( new_coin );
 }
 
-fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)
+fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)// !BUG!: callback not being invoked.
 {
-    if let Ok( file ) = &FlightSheet::from_json( &PathBuf::from( new_flightsheet.as_str() ) )
+    let flighsheet_file = PathBuf::from( new_flightsheet.as_str() );
+    let dir_path = env::current_dir().unwrap_or( PathBuf::from( "." ) );
+    let mut fullpath = dir_path.join(flighsheet_file.as_path());
+    if !fullpath.add_extension( "json" )
     {
-        update_ui_from_flightsheet( gui, file );
+        return;
+    }
+
+    println!( "{:?}", fullpath) ;
+
+    match &FlightSheet::from_json( &fullpath )
+    {
+        Ok( new_flightsheet ) =>
+        {
+            evt_clear_clicked( gui );// Clear first to prepare for new flight sheet
+            update_ui_from_flightsheet( gui, new_flightsheet );
+            println!( "FlightSheet updated" );
+        }
+
+        Err( e ) => eprintln!("Error loading flightsheet {}: Because {}", new_flightsheet.as_str(), e )
     }
 }
 
