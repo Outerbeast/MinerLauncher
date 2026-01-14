@@ -44,17 +44,17 @@ impl MinerState
 
         self.status = MinerStatus::Starting;
 
-        let process = 
+        let process =
         match as_admin
         {
             true =>
-            {// ISSUE: The child process in this case is NOT the miner but the terminal that runs executing the miner 
+            {// ISSUE: The child process in this case is NOT the miner but the terminal that runs executing the miner
                 Command::new("powershell")
                     .arg( "-Command" )
-                    .arg(format!("Start-Process '{}' -Verb RunAs -ArgumentList '{}'", exe, args.join(" ")))
+                    .arg( format!( "Start-Process '{}' -Verb RunAs -ArgumentList '{}'", exe, args.join( " " ) ) )
                 .spawn()?
             }
-            
+
             false => Command::new( exe ).args( &args ).spawn()?
 
         };
@@ -69,7 +69,7 @@ impl MinerState
 
     pub fn stop(&mut self) -> io::Result<()>
     {
-        if let Some(child) = self.child.as_mut()
+        if let Some( child ) = self.child.as_mut()
         {   // Best-effort kill
             let _ = child.kill();
             let status = child.wait()?;

@@ -31,8 +31,6 @@ use crate::utils;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightSheet
 {   // Required
-    pub name: String,// This is redundant: name should be the actual filepath of the flightsheet and then name is extracted from it.
-    pub file: PathBuf,
     #[serde(rename = "exe")]
     pub miner_exec: String,
 
@@ -55,22 +53,46 @@ pub struct FlightSheet
     pub power_limit: Option<String>,
 
     pub extra_args: Option<String>,
+    pub file: Option<PathBuf>,
 }
 
 impl FlightSheet
 {    // Constructors
-    pub fn from_json(file: &Path) -> Result<Self, io::Error>
+    pub fn from_json(path: &Path) -> Result<Self, io::Error>
     {
-        let file = fs::read_to_string( file )?;
-        serde_json::from_str( &file ).map_err( |e| e.into() )
+        let contents = fs::read_to_string(path)?;
+        let mut sheet: Self = serde_json::from_str( &contents )?;
+        // Inject the full path into the struct
+        sheet.file = Some( path.to_path_buf() );
+
+        println!( "Successfully loaded flightsheet file: {}", path.display() );
+
+        Ok( sheet )
     }
-   
+    // Name of the flightsheet (from flightsheet filename)
+    pub fn name(&self) -> String
+    {
+        match &self.file
+        {
+            Some( f ) =>
+            {
+                println!( "FlightSheet::name : {}", f.display() );
+                f.file_stem().and_then( |s| s.to_str() ).unwrap_or_default().to_string()
+            }
+
+            None =>
+            {
+                eprintln!( "FlightSheet::name : file name is empty.");
+                "".to_string()
+            }
+        }
+    }
+
     pub fn from_gui(gui: &MinerLauncher) -> Self
     {
         Self
         {
-            name: gui.get_name().to_string(),
-            file: PathBuf::new(),
+            file: None,
             miner_exec: gui.get_miner_exec().to_string(),
             coin: gui.get_coin().to_string(),
             wallet: gui.get_wallet().to_string(),
@@ -112,7 +134,7 @@ impl FlightSheet
             "JSON Files", &["json"] )
         {
             Some( path ) => FlightSheet::from_json( &path ),
-            None => Err( io::Error::new( io::ErrorKind::NotFound, "No file selected." ) ),
+            None => Err( io::Error::new( io::ErrorKind::NotFound, "No file selected." ) )
         }
     }
 
@@ -125,20 +147,28 @@ impl FlightSheet
             let entry = entry?;
             let path: PathBuf = entry.path();
             // Only process *.json files
-            if path.extension().and_then( |s| s.to_str() ) == Some( "json" )
-            && let Ok( sheet ) = Self::from_json( &path )
+            if path.extension().and_then(|s| s.to_str()) == Some("json")
             {
-                sheets.push( sheet );
+                match Self::from_json(&path)
+                {
+                    Ok( sheet ) => sheets.push( sheet ),
+                    Err( e ) => println!( "Failed to parse JSON {:?}: {}", path, e )
+                }
             }
+            else
+            {
+                println!("Skipping non-json file: {:?}", path);
+            }
+
         }
 
         Ok( sheets )
     }
 
-    pub fn save_json(&self, path: &Path) -> Result<(), io::Error>
+    pub fn save_json(&self) -> Result<(), io::Error>
     {
         let json = serde_json::to_string_pretty( self )?;
-        fs::write( path, json )?;
+        fs::write( self.file.as_ref().unwrap().clone(), json )?;
 
         Ok(())
     }

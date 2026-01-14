@@ -47,11 +47,9 @@ fn run() -> Result<(), io::Error>
             {
                 let fs = FlightSheet::from_json( &PathBuf::from( &args[1] ) )?;
                 //let _ = FlightSheet::launch_miner( &fs );
-                //let miner = ;
                 let args = fs.to_args( RIGEL_ARGS );
                 let args: Vec<&str> = args.iter().map( |s| s.as_str() ).collect();
                 MinerState::launch( &mut MinerState::new(), fs.miner_exec.as_str(), &args, fs.needs_admin() )?;
-
             }
         }
 

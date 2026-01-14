@@ -76,12 +76,13 @@ pub fn launch_gui() -> Result<(), io::Error>
     .collect();
     gui.set_coin_list( ModelRc::new( VecModel::from( coins_only ) ) );
     // Populate Flight Sheet combobox
-    let names: Vec<slint::SharedString> = flightsheets
+    let names: Vec<SharedString> = flightsheets
         .iter()
-        .map( |fs| fs.name.clone().into() )
+        .map( |fs| fs.name().clone().into() )
     .collect();
-    gui.set_sheets( Rc::new( VecModel::from( names ) ).into() );
 
+    println!( "names of flight sheets loaded are: {:?}", names );
+    gui.set_sheets( Rc::new( VecModel::from( names ) ).into() );
     // ------------- Callbacks for events ------------------//
     {// Select Miner button
         let weak = weak_gui.clone();
@@ -219,9 +220,17 @@ fn evt_start_clicked(gui: &MinerLauncher, state: &Rc<RefCell<MinerState>>)
 
 fn evt_save_clicked(gui: &MinerLauncher)
 {
-    let _ = FlightSheet::from_gui( gui )
-        .save_json( env::current_dir()
-    .unwrap_or( PathBuf::from( "." ) ).as_path() );
+    let mut save = FlightSheet::from_gui( gui );
+    save.file = Some( env::current_dir()
+        .unwrap_or( PathBuf::from( "." ) )
+        .as_path()
+    .join( gui.get_name() ) );
+
+    match save.save_json()
+    {
+        Ok( _ ) => println!( "Save successful!" ),
+        Err( e ) => eprintln!( "Failed to save flight sheet: {}", e )
+    }
 }
 
 fn evt_clear_clicked(gui: &MinerLauncher)
@@ -250,7 +259,7 @@ fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)/
 {
     let flighsheet_file = PathBuf::from( new_flightsheet.as_str() );
     let dir_path = env::current_dir().unwrap_or( PathBuf::from( "." ) );
-    let mut fullpath = dir_path.join(flighsheet_file.as_path());
+    let mut fullpath = dir_path.join( flighsheet_file.as_path() );
     if !fullpath.add_extension( "json" )
     {
         return;
@@ -267,13 +276,13 @@ fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)/
             println!( "FlightSheet updated" );
         }
 
-        Err( e ) => eprintln!("Error loading flightsheet {}: Because {}", new_flightsheet.as_str(), e )
+        Err( e ) => eprintln!( "Error loading flightsheet {}: Because {}", new_flightsheet.as_str(), e )
     }
 }
 
 pub fn update_ui_from_flightsheet(gui: &MinerLauncher, fs: &FlightSheet)
 {
-    gui.set_name( fs.name.clone().into() );
+    //gui.set_name( fs.name.clone().into() );
     gui.set_miner_exec( fs.miner_exec.clone().into() );
     gui.set_coin( fs.coin.clone().into() );
     gui.set_wallet( fs.wallet.clone().into() );
