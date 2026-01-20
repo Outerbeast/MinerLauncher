@@ -17,9 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 use std::
 {
-    path::{ Path, PathBuf }
+    io,
+    path::{ Path, PathBuf },
+    process::{ Child, Command }
 };
-
 #[macro_export]
 macro_rules! alloc_shared// Shared, mutable heap allocation (Rc<RefCell<T>>).
 {
@@ -35,4 +36,54 @@ pub fn select_file_dialogue(path: &Path, filter_name: &str, filter_list: &[&str]
         .set_directory( path )
         .add_filter( filter_name, filter_list )
     .pick_file()
+}
+
+pub fn execute(exe: &str, args: &[&str], as_admin: bool) -> io::Result<Child>
+{
+    let args: Vec<&str> = args
+        .iter()
+        .copied()
+        .filter( |a| *a != exe )
+    .collect();
+
+    match as_admin
+    {
+        true =>
+        {// ISSUE: The child process in this case is NOT the executable but the terminal that runs executing it with elevated priveledges
+            Command::new( "powershell" )
+                .arg( "-Command" )
+                .arg
+                ( format!(
+                    "Start-Process '{}' -Verb RunAs -ArgumentList '{}'",
+                    exe,
+                    args.join( " " ) )
+                )
+            .spawn()
+        }
+
+        false => Command::new( exe ).args( &args ).spawn()
+    }
+}
+
+pub fn stop(mut proc: Child) -> io::Result<()>
+{   // Best-effort kill
+    proc.kill()?;
+    let _ = proc.wait()?;
+
+    Ok(())
+}
+
+pub fn is_running(mut proc: Child) -> bool
+{
+    match proc.try_wait()
+    {
+        Ok( Some( _ ) ) => false,
+        Ok( None ) => true,
+        Err( _ ) => false,
+    }
+}
+
+pub fn pid(proc: Child) -> Option<u32>
+{
+    Some( proc.id() )
 }

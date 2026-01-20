@@ -35,13 +35,13 @@ use slint::
 use crate::
 {
     MinerLauncher,
-    exec::*,
+    miner::*,
     flightsheet,
     flightsheet::FlightSheet,
     utils,
     alloc_shared
 };
-use crate::flightsheet::RIGEL_ARGS;
+//use crate::exec::RIGEL_ARGS;
 
 // Build UI
 pub fn launch_gui() -> Result<(), io::Error>
@@ -95,14 +95,16 @@ pub fn launch_gui() -> Result<(), io::Error>
         });
     }
 
-    let state = alloc_shared!(MinerState::new());
+    let state = alloc_shared!( MinerState::new() );
     {
         let weak = weak_gui.clone();
         let state = state.clone();
 
-        gui.on_start_clicked(move || {
-            if let Some(gui) = weak.upgrade() {
-                evt_start_clicked(&gui, &state);
+        gui.on_start_clicked( move ||
+        {
+            if let Some( gui ) = weak.upgrade()
+            {
+                evt_start_clicked( &gui, &state );
             }
         });
     }
@@ -169,7 +171,7 @@ pub fn launch_gui() -> Result<(), io::Error>
         });
     }
 
-    gui.run().expect( "GUI failed to launch." );
+    gui.run().expect( "GUI failed to execute." );
 
     Ok(())
 }
@@ -192,27 +194,24 @@ fn evt_start_clicked(gui: &MinerLauncher, state: &Rc<RefCell<MinerState>>)
     {
         "Start Miner" =>
         {
-            let flightsheet = FlightSheet::from_gui(gui);
             let mut miner = state.borrow_mut();
-            let args = flightsheet.to_args( RIGEL_ARGS );
-            let args: Vec<&str> = args.iter().map( |s| s.as_str() ).collect();
 
-            match miner.launch( &flightsheet.miner_exec, &args, flightsheet.needs_admin() )
+            match miner.launch( &FlightSheet::from_gui( gui ) )
             {
-                Ok( _ ) => gui.set_btn_start_txt( "Stop Miner".into() ),
-                Err( e ) => miner.status = MinerStatus::Error( e.to_string() )
+                Ok( _ ) => { }
+                Err( e ) => eprintln!( "Miner execution failed: {}", e )
             }
         }
         // TODO: need to fix stoppage behaviour
-        /*"Stop Miner" =>
+        "Stop Miner" =>
         {
-            let mut s = state.borrow_mut();
-            match s.stop()
-            {
-                Ok( _ ) => gui.set_btn_start_txt( "Start Miner".into() ),
-                Err( e ) => eprintln!( "Failed to stop miner: {}", e )
-            }
-        }*/
+            // let mut s = state.borrow_mut();
+            // match s.stop()
+            // {
+            //     Ok( _ ) => gui.set_btn_start_txt( "Start Miner".into() ),
+            //     Err( e ) => eprintln!( "Failed to stop miner: {}", e )
+            // }
+        }
 
         _ => { }
     }
@@ -260,6 +259,7 @@ fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)/
     let flighsheet_file = PathBuf::from( new_flightsheet.as_str() );
     let dir_path = env::current_dir().unwrap_or( PathBuf::from( "." ) );
     let mut fullpath = dir_path.join( flighsheet_file.as_path() );
+
     if !fullpath.add_extension( "json" )
     {
         return;
@@ -276,13 +276,12 @@ fn evt_flightsheet_selected(gui: &MinerLauncher, new_flightsheet: SharedString)/
             println!( "FlightSheet updated" );
         }
 
-        Err( e ) => eprintln!( "Error loading flightsheet {}: Because {}", new_flightsheet.as_str(), e )
+        Err( e ) => eprintln!( "Error loading flightsheet {}: {}", new_flightsheet.as_str(), e )
     }
 }
 
 pub fn update_ui_from_flightsheet(gui: &MinerLauncher, fs: &FlightSheet)
 {
-    //gui.set_name( fs.name.clone().into() );
     gui.set_miner_exec( fs.miner_exec.clone().into() );
     gui.set_coin( fs.coin.clone().into() );
     gui.set_wallet( fs.wallet.clone().into() );

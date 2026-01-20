@@ -26,7 +26,7 @@ use std::
 };
 
 use serde::{ Serialize, Deserialize };
-use crate::utils;
+use crate::{ utils, miner::ArgSpec };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightSheet
@@ -54,6 +54,25 @@ pub struct FlightSheet
 
     pub extra_args: Option<String>,
     pub file: Option<PathBuf>,
+}
+// Getter Registry
+pub fn getter_for(field: &str) -> Option<fn(&FlightSheet) -> Option<String>>
+{
+    match field
+    {
+        "coin" => Some( |fs| Some( fs.coin.clone() ) ),
+        "algorithm" => Some( |fs| algo_for( fs.coin.clone() ).map(|a| a.to_string() ) ),
+        "wallet" => Some( |fs| Some( fs.wallet.clone() ) ),
+        "pool" => Some( |fs| Some( fs.pool.clone() ) ),
+        "worker" => Some( |fs| fs.worker.clone() ),
+        // Optional
+        "core_clock" => Some( |fs| fs.core_clock.clone() ),
+        "mem_clock" => Some( |fs| fs.mem_clock.clone() ),
+        "fan_speed" => Some( |fs| fs.fan_speed.clone() ),
+        "power_limit" => Some( |fs| fs.power_limit.clone() ),
+
+        _ => None,
+    }
 }
 
 impl FlightSheet
@@ -106,7 +125,7 @@ impl FlightSheet
         }
     }
     // Methods
-    pub fn to_args(&self, schema: &[ArgSpec]) -> Vec<String>
+    pub fn to_args(&self, schema: &Vec<ArgSpec>) -> Vec<String>
     {
         let mut args = vec![self.miner_exec.clone()];
 
@@ -114,7 +133,7 @@ impl FlightSheet
         {
             if let Some(value) = ( spec.getter )( self )
             {
-                args.push( spec.flag.into() );
+                args.push( spec.flag.clone() );
                 args.push( value );
             }
         }
@@ -266,59 +285,3 @@ pub fn algo_for(coin: String) -> Option<&'static str>
 {
     Some( COINS.iter().find( |c| c.0 == coin )?.1 )
 }
-
-pub struct ArgSpec
-{
-    pub flag: &'static str,
-    pub getter: fn(&FlightSheet) -> Option<String>,
-}
-
-pub const RIGEL_ARGS: &[ArgSpec] =
-    &[
-    ArgSpec
-    {
-        flag: "--coin",
-        getter: |fs| Some(fs.coin.clone()),
-    },
-    ArgSpec
-    {
-        flag: "--algorithm",
-        getter: |fs| algo_for( fs.coin.clone() ).map( |a| a.to_string() ),
-    },
-    ArgSpec
-    {
-        flag: "--username",
-        getter: |fs| Some(fs.wallet.clone()),
-    },
-    ArgSpec
-    {
-        flag: "--url",
-        getter: |fs| Some(fs.pool.clone()),
-    },
-    // Optional
-    ArgSpec
-    {
-        flag: "--worker",
-        getter: |fs| fs.worker.clone(),
-    },
-    ArgSpec
-    {
-        flag: "--cclock",
-        getter: |fs| fs.core_clock.clone(),
-    },
-    ArgSpec
-    {
-        flag: "--mclock",
-        getter: |fs| fs.mem_clock.clone(),
-    },
-    ArgSpec
-    {
-        flag: "--fan-control",
-        getter: |fs| fs.fan_speed.clone(),
-    },
-    ArgSpec
-    {
-        flag: "--pl",
-        getter: |fs| fs.power_limit.clone(),
-    },
-];
