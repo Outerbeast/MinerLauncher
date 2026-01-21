@@ -6,6 +6,8 @@ if errorlevel 1 (
     echo Rust is not installed. Please install Rust from https://rustup.rs/
     exit /b 1
 )
+echo Updating dependencies...
+::cargo update
 :: Build the project in release mode
 echo Building project...
 cargo build --release

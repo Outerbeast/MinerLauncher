@@ -1,0 +1,152 @@
+[
+  {
+    "name": "rigel",
+    "args": [
+      { "flag": "--coin", "field": "coin" },
+      { "flag": "--algorithm", "field": "algorithm" },
+      { "flag": "--username", "field": "wallet" },
+      { "flag": "--url", "field": "pool" },
+      { "flag": "--worker", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan-control", "field": "fan_speed" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "t-rex",
+    "args": [
+      { "flag": "--coin", "field": "coin" },
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "--url", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--worker", "field": "worker" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "lolMiner",
+    "args": [
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "--pool", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--cclk", "field": "core_clock" },
+      { "flag": "--mclk", "field": "mem_clock" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "xmrig",
+    "args": [
+      { "flag": "--coin", "field": "coin" },
+      { "flag": "--url", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--rig-id", "field": "worker" }
+    ]
+  },
+
+  {
+    "name": "wildrig",
+    "args": [
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "--url", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--pass", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "miner",
+    "args": [
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "--server", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--pass", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "teamredminer",
+    "args": [
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "-o", "field": "pool" },
+      { "flag": "-u", "field": "wallet" },
+      { "flag": "-p", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--power-limit", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "PhoenixMiner",
+    "args": [
+      { "flag": "-coin", "field": "coin" },
+      { "flag": "-pool", "field": "pool" },
+      { "flag": "-wal", "field": "wallet" },
+      { "flag": "-worker", "field": "worker" },
+      { "flag": "-cclock", "field": "core_clock" },
+      { "flag": "-mclock", "field": "mem_clock" },
+      { "flag": "-fanmax", "field": "fan_speed" },
+      { "flag": "-powlim", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "srbminer",
+    "args": [
+      { "flag": "--algorithm", "field": "algorithm" },
+      { "flag": "--pool", "field": "pool" },
+      { "flag": "--wallet", "field": "wallet" },
+      { "flag": "--worker", "field": "worker" },
+      { "flag": "--gpu-cclock0", "field": "core_clock" },
+      { "flag": "--gpu-mclock0", "field": "mem_clock" },
+      { "flag": "--gpu-fan0", "field": "fan_speed" },
+      { "flag": "--gpu-plimit0", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "bzminer",
+    "args": [
+      { "flag": "--algo", "field": "algorithm" },
+      { "flag": "--url", "field": "pool" },
+      { "flag": "--user", "field": "wallet" },
+      { "flag": "--worker", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  },
+
+  {
+    "name": "nbminer",
+    "args": [
+      { "flag": "-a", "field": "algorithm" },
+      { "flag": "-o", "field": "pool" },
+      { "flag": "-u", "field": "wallet" },
+      { "flag": "-w", "field": "worker" },
+      { "flag": "--cclock", "field": "core_clock" },
+      { "flag": "--mclock", "field": "mem_clock" },
+      { "flag": "--fan", "field": "fan_speed" },
+      { "flag": "--pl", "field": "power_limit" }
+    ]
+  }
+]

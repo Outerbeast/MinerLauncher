@@ -37,7 +37,7 @@ pub fn select_file_dialogue(path: &Path, filter_name: &str, filter_list: &[&str]
         .add_filter( filter_name, filter_list )
     .pick_file()
 }
-
+// Executable launcher
 pub fn execute(exe: &str, args: &[&str], as_admin: bool) -> io::Result<Child>
 {
     let args: Vec<&str> = args

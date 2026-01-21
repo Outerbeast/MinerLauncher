@@ -56,14 +56,13 @@ export component MinerLauncher inherits Window {
     icon: @image-url("icon.ico");
 
     width: 600px;
-    height: 960px;
+    height: 920px;
 
     in-out property <string> popup_message;
 
     callback show_popup;
 
     popup := PopupWindow {
-        // your popup UI
         Text {
             text: root.popup_message;
         }
@@ -135,7 +134,7 @@ export component MinerLauncher inherits Window {
 
         txtWallet := LabeledLineEdit { value <=> root.wallet;      label: "Wallet Address"; }
         txtWorker := LabeledLineEdit { value <=> root.worker;      label: "Worker Name"; }
-        txtPool := LabeledLineEdit { value <=> root.pool;        label: "Pool URL"; }
+        txtPool := LabeledLineEdit { value <=> root.pool;        label: "Pool URL:Port"; }
         txtCore := LabeledLineEdit { value <=> root.core_clock;  label: "Core Clock"; }
         txtMem := LabeledLineEdit { value <=> root.mem_clock;   label: "Memory Clock"; }
         txtFan := LabeledLineEdit { value <=> root.fan_speed;   label: "Fan Speed"; }
@@ -152,12 +151,6 @@ export component MinerLauncher inherits Window {
             selected(current-value) => { 
                 flightsheet_changed(current-value)
             }
-        }
-
-        Text {
-            text: "Loaded default flight sheet: " + root.sheets[0];
-            color: red;
-            font-size: 14px;
         }
 
         HorizontalBox {

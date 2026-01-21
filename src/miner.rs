@@ -32,10 +32,8 @@ use crate::
     utils
 };
 
-static ARG_SCHEMA: &str = include_str!( "argspec.toml" );
-// ===============================
-// 1. ArgSpec + Getter Function
-// ===============================
+pub static ARG_SCHEMA: &str = include_str!( "argspec.json" );
+
 pub struct ArgSpec
 {
     pub flag: String,
@@ -58,8 +56,7 @@ pub struct MinerEntry
 
 pub fn get_argspecs(miner_exe: &str) -> Result<Vec<ArgSpec>, io::Error>
 {   // Deserialize directly into a Vec<MinerEntry>
-    let miners: Vec<MinerEntry> = toml::from_str( ARG_SCHEMA )
-        .map_err( |e| io::Error::new( io::ErrorKind::InvalidData, e ) )?;
+    let miners: Vec<MinerEntry> = serde_json::from_str( ARG_SCHEMA )?;
     // Find the miner entry
     let miner = miners.iter()
         .find( |m| m.name == miner_exe )
@@ -78,7 +75,7 @@ pub fn get_argspecs(miner_exe: &str) -> Result<Vec<ArgSpec>, io::Error>
                 format!( "Unknown field '{}' for miner '{}'", arg.field, miner_exe ),
             ))?;
 
-        out.push(ArgSpec
+        out.push( ArgSpec
         {
             flag: arg.flag.clone(),
             getter,
