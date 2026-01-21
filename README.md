@@ -2,7 +2,30 @@
 
 ![alt text](https://github.com/Outerbeast/MinerLauncher/blob/main/preview.png?raw=true)
 
-Quick launcher for mining tools through a flightsheet system
+Quick launcher for GPU mining tools through a flightsheet system
+
+MinerLauncher currently supports the following mining tools:
+• 	rigel
+• 	t-rex
+• 	lolMiner
+• 	xmrig
+• 	wildrig
+• 	gminer
+• 	teamredminer
+• 	PhoenixMiner
+• 	srbminer
+• 	bzminer
+• 	nbminer
+
+Each miner is mapped to the appropriate flags for:
+• 	Algorithm
+• 	Pool URL
+• 	Wallet / Username
+• 	Worker name
+• 	Core clock
+• 	Memory clock
+• 	Fan speed
+• 	Power limit
 
 
 ## Usage
